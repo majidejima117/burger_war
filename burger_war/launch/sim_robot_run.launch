@@ -27,7 +27,15 @@
     <group if="$(eval enemy_level==3)"> 
       <include file="$(find burger_war)/launch/sim_level_3_clubhouse.launch">
         <arg name="name_space" value="enemy_bot" />
-      </include>  
+      </include>
+    </group>
+
+    <!-- test for majima -->
+    <!-- level 4 (if you want to run , set launch arg enemy_level=4 --> 
+    <group if="$(eval enemy_level==4)"> 
+      <include file="$(find burger_war)/launch/sim_level_4_majima.launch">
+        <arg name="name_space" value="enemy_bot" />
+      </include>
     </group>
   </group>
 
