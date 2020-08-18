@@ -30,6 +30,10 @@ import actionlib_msgs
 import json
 import math
 import roslib
+import sendIdToJudge
+import random
+import rosparam
+
 
 #location_listの読み込み
 file_path = roslib.packages.get_pkg_dir('burger_war') + "/location_list/location_list.json"
@@ -39,12 +43,11 @@ location_list_dict = json.load(file)
 class Qwerty():
     def __init__(self, bot_name="NoName",
                  use_lidar=False, use_camera=False, use_imu=False,
-                 use_odom=False, use_joint_states=False, use_rviz=False):
+                 use_odom=False, use_joint_states=False):
         self.name = bot_name
 
-
         self.check_points     = ["south_right", "south_center", "south_left", "west_right", "west_center", "west_left", "north_right", "north_center", "north_left", "east_right", "east_center", "east_left"]
-
+        
         # velocity publisher
         self.vel_pub = rospy.Publisher('cmd_vel', Twist,queue_size=1)
         self.client = actionlib.SimpleActionClient('move_base',MoveBaseAction)
@@ -74,11 +77,6 @@ class Qwerty():
         if use_joint_states:
             self.odom_sub = rospy.Subscriber('joint_states', JointState, self.jointstateCallback)
 
-        if use_rviz:
-            # for convert image topic to opencv obj
-            self.rviz_img = None
-            self.rviz_bridge = CvBridge()
-            self.rviz_image_sub = rospy.Subscriber('image_raw', Image, self.rvizimageCallback)
     # lidar scan topic call back sample
     # update lidar scan state
     def lidarCallback(self, data):
@@ -122,15 +120,6 @@ class Qwerty():
         rospy.loginfo("joint_state R: {}".format(self.wheel_rot_r))
         rospy.loginfo("joint_state L: {}".format(self.wheel_rot_l))
 
-    def rvizimageCallback(self, data):
-        try:
-            self.rviz_img = self.rviz_bridge.imgmsg_to_cv2(data, "bgr8")
-        except CvBridgeError as e:
-            rospy.logerr(e)
-
-        cv2.imshow("rviz Image window", self.rviz_img)
-        cv2.waitKey(1)
-
     def area(self,img):
         hsv = cv2.cvtColor(img,cv2.COLOR_BGR2HSV)
 
@@ -151,14 +140,6 @@ class Qwerty():
         image, contours, hierarchy = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 
         return cv2.contourArea(contours[0])
-
-    def calcTwist(self):
-        x = 0
-        th = 0
-        twist = Twist()
-        twist.linear.x = x; twist.linear.y = 0; twist.linear.z = 0
-        twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = th
-        return twist
 
     def setGoal(self,location_name):
         self.client.wait_for_server()
@@ -183,17 +164,24 @@ class Qwerty():
             rospy.signal_shutdown("Action server not available!")
         else:
             return self.client.get_result() 
+
     def strategy(self):
         r = rospy.Rate(5) # change speed 1fps
-        
+
         while(1):
             self.check_points.append(self.check_points[0])
             self.setGoal(self.check_points[0])
             self.check_points.pop(0)
 
+        r.sleep()
+
 if __name__ == '__main__':
     rospy.init_node('all_sensor_sample')
-    bot = Qwerty(bot_name='qwerty', use_lidar=False, use_camera=True,
-                 use_imu=False, use_odom=False, use_joint_states=False, use_rviz=False)
-    bot.strategy()
 
+    bot = Qwerty(bot_name='qwerty', use_lidar=False, use_camera=False,
+                 use_imu=False, use_odom=False, use_joint_states=False)
+    """
+    bot = Qwerty(bot_name='qwerty', use_lidar=False, use_camera=True,
+                 use_imu=False, use_odom=False, use_joint_states=False)
+    """
+    bot.strategy()
